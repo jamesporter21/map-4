@@ -356,7 +356,7 @@ div#layers-custom-control {
 
 /* start filter styling */
 span.anchor {
-  width: 223px;
+  width: 131px;
 }
 .dropdown-check-list {
   width: 190px;
@@ -364,8 +364,9 @@ span.anchor {
 
 fieldset#filter-by-first-type,
 fieldset#filter-by-second-type {
+  font-size: 14px;
   font-weight: 600;
-  width: 279px;
+  width: 169px;
   background-color: #ffffff;
   position: absolute;
   border: 1px solid #ffffff;
@@ -424,7 +425,7 @@ fieldset#filter-by-second-type {
   margin: 0;
   border: 1px solid #ccc;
   border-top: none;
-  width: 279px;
+  width: 187px;
 }
 
 .dropdown-check-list ul.items li {
@@ -462,6 +463,13 @@ fieldset#filter-by-second-type {
 div.toggle-filter-box {
   background-color: #ffffff;
   color: #000000;
+}
+
+img.legend-image {
+  width: 15px;
+  float: right;
+  margin-right: 10px;
+  margin-top: 3px;
 }
 /* end filter styling */
 
