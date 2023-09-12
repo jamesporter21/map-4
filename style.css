@@ -1,350 +1,540 @@
-mapboxgl.accessToken =
-  "pk.eyJ1IjoiamFtZXNwb3J0ZXIyMSIsImEiOiJjbGxvN2lmazcwN3d4M2NuM2pnZHZsZTNwIn0.I70dWocAUtgPwOThih14DA";
+/* load font*/
 
-var filterGroup = document.getElementById("ll");
-
-var maxBounds = [
-  [-74.27, 40.49], // Southwest coordinates
-  [-73.68, 40.92], // Northeast coordinates
-];
-
-var map = new mapboxgl.Map({
-  container: "map",
-  style: "mapbox://styles/jamesporter21/cllqq02fy007w01r4bv7yal0h",
-  center: [-96.7853964, 32.7846839],
-  zoom: 10,
-  // maxBounds: maxBounds,
-  preserveDrawingBuffer: true,
-  customAttribution:
-    'created by <a style="padding: 0 3px 0 3px; color:#FFFFFF; background-color: #bf7f46;" target="_blank" href=http://www.geocadder.bg/en/portfolio.html>GEOCADDER</a>',
-});
-
-var nav = new mapboxgl.NavigationControl({ showCompass: false });
-map.addControl(nav, "top-left");
-
-// adding button for toggling layers list
-// class MyCustomControl {
-//   onAdd(map) {
-//     this.map = map;
-//     this.container = document.createElement("div");
-//     this.container.className = "my-custom-control";
-//     this.container.className = "mapboxgl-ctrl my-custom-control";
-//     this.container.id = "layers-custom-control";
-//     this.container.innerHTML = '<span class="material-icons">layers</span>';
-//     return this.container;
-//   }
-//   onRemove() {
-//     this.container.parentNode.removeChild(this.container);
-//     this.map = undefined;
-//   }
-// }
-
-// const myCustomControl = new MyCustomControl();
-
-// map.addControl(myCustomControl, "top-left");
-
-// var element = document.getElementById("layers-custom-control");
-// element.addEventListener("click", function () {
-//   var layersList = document.getElementById("menu");
-//   if (layersList.style.display !== "none") {
-//     layersList.style.display = "none";
-//   } else {
-//     layersList.style.display = "grid";
-//   }
-// });
-// end adding button for toggling layers list
-
-var markersAllIds = [];
-
-var onlySelectedaccessibilityPoints = [];
-var isinitialSelectedType = false;
-var initialSelectedType = "";
-var counter = 0;
-
-var mainPointLatitude;
-var mainPointLongitude;
-
-var pointsForSearchArray = [];
-
-/// loading POIs data from Google Sheets table///
-$.getJSON(
-  "https://sheets.googleapis.com/v4/spreadsheets/1SLtDR6js3Tf6e64iqDalmUI6NXg01SB-AZBpjmRB1OE/values/Sheet1!C2:M3000?majorDimension=ROWS&key=AIzaSyB-2fHh4Fu0Gw92XtN8U724FH1zoy5xWhs",
-  function (response) {
-    response.values.forEach(function (marker) {
-      var campusName = marker[0];
-      var address = marker[1];
-
-      var latitude = parseFloat(marker[2]);
-      var longitude = parseFloat(marker[3]);
-
-      var districtCharterOperator = marker[5];
-      var gradespan = marker[6];
-      var accountabilityScore = marker[7];
-      var accountabilityGrade = marker[8];
-      var studentAchievementScore = marker[9];
-      var studentAchievementGrade = marker[10];
-
-      var firstFilterCheckboxValue = studentAchievementGrade
-        .toLowerCase()
-        .replace(/\s/g, "-");
-      console.log(firstFilterCheckboxValue);
-
-      var secondFilterCheckboxValue = studentAchievementGrade
-        .toLowerCase()
-        .replace(/\s/g, "-");
-
-      var type = marker[4];
-      var schoolType = "";
-      if (type === "TRUE") {
-        schoolType = "Charter";
-      } else {
-        schoolType = "DISD School";
-      }
-
-      var popupContent = "<div>";
-
-      popupContent += "<div class='title'>" + campusName + "</div>";
-
-      popupContent += "<hr>";
-
-      popupContent += "<div class='details'>";
-
-      popupContent += "<div>Address: <b>" + address + "</b></div>";
-      popupContent += "<div>Charter: <b>" + schoolType + "</b></div>";
-      popupContent +=
-        "<div>District/Charter Operator Name: <b>" +
-        districtCharterOperator +
-        "</b></div>";
-      popupContent += "<div>Gradespan: <b>" + gradespan + "</b></div>";
-
-      popupContent +=
-        "<div>2022 Accountability Score: <b>" +
-        accountabilityScore +
-        "</b></div>";
-      popupContent +=
-        "<div>2022 Accountability Grade: <b>" +
-        accountabilityGrade +
-        "</b></div>";
-      popupContent +=
-        "<div>2022 Student Achievement Score: <b>" +
-        studentAchievementScore +
-        "</b></div>";
-      popupContent +=
-        "<div>2022 Student Achievement Grade: <b>" +
-        studentAchievementGrade +
-        "</b></div>";
-
-      popupContent += "</div>";
-
-      popupContent += "</div>";
-
-      popup = new mapboxgl.Popup({
-        closeButton: false,
-        closeOnClick: false,
-      }).setHTML(popupContent);
-
-      var el = document.createElement("div");
-
-      var schoolTypeSmallLetters = schoolType.toLowerCase().replace(/\s/g, "-");
-      el.className = "marker " + schoolTypeSmallLetters;
-      el.id = type;
-
-      var markerObj = new mapboxgl.Marker(el)
-        .setLngLat([longitude, latitude])
-        .setPopup(popup)
-        .addTo(map);
-
-      // const markerDiv = markerObj.getElement();
-
-      if(type === "TRUE"){
-        $(el).attr("data-first-type", "first-" + firstFilterCheckboxValue);
-        $(el).attr("data-first-type-visible", "true");
-      } else {
-        $(el).attr("data-second-type", "second-" + secondFilterCheckboxValue);
-        $(el).attr("data-second-type-visible", "true");
-      }
-      
-
-      el.style.backgroundImage = "url(" + schoolTypeSmallLetters + ".svg)";
-      el.style.backgroundColor = "#FFFFFF";
-      el.style.border =
-        "2px solid " + getIconBorderColorByType(schoolTypeSmallLetters);
-
-      markersAllIds.push({
-        schoolTypeSmallLetters: schoolTypeSmallLetters,
-        type: type,
-        schoolType: schoolType,
-      });
-      // }
-
-      if (campusName) {
-        pointsForSearchArray.push({
-          campusName: campusName,
-          schoolType: schoolType,
-          latitude: latitude,
-          longitude: longitude,
-          type: type,
-        });
-      }
-    });
-
-    // map.fitBounds(bounds, { padding: 80 });
-
-    var objectsJson = markersAllIds.map((object) => JSON.stringify(object));
-    var objectsJsonSet = new Set(objectsJson);
-    var uniqueJsonArray = Array.from(objectsJsonSet);
-    var uniqueObjectsByContent = uniqueJsonArray.map((string) =>
-      JSON.parse(string)
-    );
-    console.log(uniqueObjectsByContent);
-
-    // for (const value of uniqueObjectsByContent) {
-    //   $("#menu").append(
-    //     "<a href='#' id='" +
-    //       value["schoolTypeSmallLetters"] +
-    //       "'><img src='" +
-    //       value["schoolTypeSmallLetters"] +
-    //       ".svg'><span>" +
-    //       value["schoolType"] +
-    //       "</span></a>"
-    //   );
-
-    //   $("#" + value["schoolTypeSmallLetters"]).click(function () {
-    //     if (
-    //       $("div." + value["schoolTypeSmallLetters"]).css("visibility") == "visible"
-    //     ) {
-    //       $("div." + value["schoolTypeSmallLetters"]).css("visibility", "hidden");
-    //       $("a#" + value["schoolTypeSmallLetters"]).css(
-    //         "background-color",
-    //         "#e39a59"
-    //       );
-    //       $("a#" + value["schoolTypeSmallLetters"]).css("color", "#FFFFFF");
-    //       $("a#" + value["schoolTypeSmallLetters"]).css(
-    //         "border",
-    //         "1px solid #e7e7e7"
-    //       );
-    //     } else {
-    //       $("div." + value["schoolTypeSmallLetters"]).css("visibility", "visible");
-    //       $("a#" + value["schoolTypeSmallLetters"]).css(
-    //         "background-color",
-    //         "#fefae0"
-    //       );
-    //       $("a#" + value["schoolTypeSmallLetters"]).css("color", "#21333f");
-    //     }
-    //   });
-
-    //   $("a#" + value["schoolTypeSmallLetters"]).mouseenter(function () {
-    //     $("a#" + value["schoolTypeSmallLetters"]).css("background-color", "#aba4a2");
-    //     $("a#" + value["schoolTypeSmallLetters"]).css("color", "#FFFFFF");
-    //   });
-
-    //   $("a#" + value["schoolTypeSmallLetters"]).mouseleave(function () {
-    //     if (
-    //       $("div." + value["schoolTypeSmallLetters"]).css("visibility") == "visible"
-    //     ) {
-    //       $("a#" + value["schoolTypeSmallLetters"]).css(
-    //         "background-color",
-    //         "#fefae0"
-    //       );
-    //       $("a#" + value["schoolTypeSmallLetters"]).css("color", "#21333f");
-    //     } else {
-    //       $("a#" + value["schoolTypeSmallLetters"]).css(
-    //         "background-color",
-    //         "#e39a59"
-    //       );
-    //       $("a#" + value["schoolTypeSmallLetters"]).css("color", "#FFFFFF");
-    //     }
-    //   });
-    // }
-
-    // close all opened popups
-    $(".marker").click(function () {
-      $(".mapboxgl-popup").remove();
-    });
-
-    $(".mapboxgl-canvas").click(function () {
-      $(".mapboxgl-popup").remove();
-    });
-
-    // map.fitBounds(bounds, { padding: 80 });
-  }
-);
-
-// popup toggling //
-function togglePopup() {
-  var popup = this._popup;
-
-  if (!popup) return;
-  else if (popup.isOpen()) popup.remove();
-  else popup.addTo(this._map);
-}
-// end popup toggling//
-
-function getIconBorderColorByType(type) {
-  var color = "red";
-  switch (type) {
-    case "disd-school":
-      color = "red";
-      break;
-    case "charter":
-      color = "blue";
-      break;
-
-    default:
-      color = "green";
-  }
-  return color;
+@font-face {
+  font-family: Roboto;
+  src: url("Roboto-Regular.ttf") format("opentype");
 }
 
-//////////////// open/close dropdown menu for first type filter
-var checkList = document.getElementById("list1");
-checkList.getElementsByClassName("anchor")[0].onclick = function (evt) {
-  if (checkList.classList.contains("visible"))
-    checkList.classList.remove("visible");
-  else checkList.classList.add("visible");
-};
-//////////////
+body {
+  margin: 0;
+  padding: 0;
+  font-family: "Roboto", sans-serif;
+  color: #21333f;
+}
 
-//////////// open/close dropdown menu for second type filter
-var checkListTwo = document.getElementById("list2");
-checkListTwo.getElementsByClassName("anchor")[0].onclick = function (evt) {
-  if (checkListTwo.classList.contains("visible"))
-    checkListTwo.classList.remove("visible");
-  else checkListTwo.classList.add("visible");
-};
-////////////////
+#map {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+}
 
-$("input[type='checkbox'][name='filter-by-first-type-input']").click(
-  function () {
-    var currentCountry = $(this).val();
-    if ($(this).is(":checked")) {
-      $("[data-first-type='" + currentCountry + "']").each(function (index) {
-        $(this).attr("data-first-type-visible", "true");
-        $(this).css("display", "block");
-      });
-    } else {
-      $("[data-first-type='" + currentCountry + "']").each(function (index) {
-        $(this).attr("data-first-type-visible", "false");
-        $(this).css("display", "none");
-      });
-    }
+.marker-icon,
+.marker-text {
+  vertical-align: middle;
+  display: inline-block;
+  margin-left: 2px;
+}
+
+.marker-text {
+  font-size: 20px;
+  font-weight: bold;
+  margin-right: 8px;
+}
+
+/* .mapboxgl-marker {
+    cursor: pointer;
+} */
+
+.marker {
+  /* background-image: url('marker.svg'); */
+  /* background-size: cover; */
+  /* border: 1px solid #ff1493; */
+  /* background-color: #ffffff; */
+  /* opacity: 0.5; */
+  height: 24px;
+  border-radius: 4px;
+  width: 24px;
+  opacity: 1;
+  cursor: pointer;
+  background-repeat: round;
+  border: 1px solid #d121c0;
+}
+
+.marker:hover {
+  background-color: #d2ffff;
+}
+
+.selectedMarker {
+  /* background-image: url('marker.svg'); */
+  background-size: cover;
+  border: none;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+p,
+h3 {
+  margin: 5px;
+}
+
+p {
+  font-size: 15px;
+}
+
+/*popup styling*/
+
+.mapboxgl-popup-close-button {
+  float: right;
+  right: 13px;
+  border-radius: 21px;
+  border: 1px solid #e39a59;
+  background-color: #ffffff;
+  width: 20px;
+  height: 20px;
+  font-size: 14px;
+  color: #21333f;
+  cursor: pointer;
+  margin-top: 15px;
+  padding: 0;
+}
+
+.mapboxgl-popup-close-button:hover {
+  background-color: #e39a59;
+  color: #ffffff;
+  border: 1px solid #e39a59;
+}
+
+.mapboxgl-popup-tip {
+  margin-left: 1%;
+}
+
+.mapboxgl-popup-content {
+  max-width: 400px;
+  width: 340px;
+  font: 16px/14px "Roboto", sans-serif;
+  min-width: 120px;
+  border: 2px solid #e39a59;
+  border-radius: 15px;
+  background-color: #ffffff;
+  color: #21333f;
+  text-align: left;
+}
+
+div.title {
+  font-weight: bold;
+}
+#map
+  > div.mapboxgl-popup.mapboxgl-popup-anchor-bottom
+  > div.mapboxgl-popup-content
+  > div
+  > hr {
+  color: #e39a59;
+}
+div.details > div {
+  padding-bottom: 10px;
+}
+.mapboxgl-popup-content div.type {
+  /* font: 20px/14px "GillSans", "Source Sans Pro", Helvetica, Arial;
+  color: #268084;
+  text-align: center;
+  font-weight: bold;
+  line-height: 21px;
+  margin-right: 22px; */
+  margin-top: 3px;
+}
+
+div.location-summary {
+  width: 100%;
+  margin-top: 15px;
+  text-align: justify;
+  overflow-y: auto;
+  height: 100px;
+  line-height: 15px;
+}
+
+.mapboxgl-popup-content div.content {
+  height: 33px;
+  width: 98%;
+  border-radius: 8px;
+  background-color: #ffffff;
+  /* color: #000000; */
+  text-align: left;
+  margin-top: 10px;
+}
+
+div.explore-button {
+  border-color: #21333f;
+}
+
+.mapboxgl-popup-content a {
+  display: block;
+  padding-top: 11px;
+  padding-bottom: 8px;
+  border-radius: 6px;
+  height: 53px;
+  text-align: center;
+  text-decoration: none;
+  font-size: 17px;
+  font-weight: normal;
+  margin-bottom: 4px;
+  margin-top: 23px;
+  margin-left: -2px;
+  background-color: #ffffff;
+  color: #e39a59;
+  border: 1px solid #e39a59;
+  outline: none;
+}
+
+.mapboxgl-popup-content a.link-button {
+  text-align: center;
+}
+
+.mapboxgl-popup-content a:hover {
+  background-color: #e39a59;
+  border-color: #e39a59;
+  color: #ffffff;
+}
+
+i.fa {
+  margin-left: 10px;
+}
+
+.mapboxgl-popup-anchor-top .mapboxgl-popup-tip,
+.mapboxgl-popup-anchor-top-left .mapboxgl-popup-tip,
+.mapboxgl-popup-anchor-top-right .mapboxgl-popup-tip {
+  border-bottom-color: #e39a59;
+}
+
+.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip,
+.mapboxgl-popup-anchor-bottom-left .mapboxgl-popup-tip,
+.mapboxgl-popup-anchor-bottom-right .mapboxgl-popup-tip {
+  border-top-color: #e39a59;
+}
+
+.mapboxgl-popup-anchor-left .mapboxgl-popup-tip {
+  border-right-color: #e39a59;
+}
+
+.mapboxgl-popup-anchor-right .mapboxgl-popup-tip {
+  border-left-color: #e39a59;
+}
+
+p.type {
+  margin-left: 5px;
+}
+
+/*end popup styling*/
+
+/* layers list */
+#menu {
+  height: 118px;
+  display: grid;
+  background: #fff;
+  position: absolute;
+  z-index: 1;
+  top: 10px;
+  border-radius: 3px;
+  border: 1px solid #e7e7e7;
+  right: 10px;
+  width: 164px;
+}
+
+#menu a {
+  color: #21333f;
+  margin: 0;
+  padding: 0;
+  text-decoration: none;
+  background-color: #fefae0;
+  border-bottom: 1px solid #e7e7e7;
+  padding-top: 12px;
+  text-transform: capitalize;
+  font-weight: bold;
+  font-size: 16px;
+  text-align: left;
+  padding-left: 6px;
+}
+
+#menu-two {
+  height: 118px;
+  display: grid;
+  background: #fff;
+  position: absolute;
+  z-index: 1;
+  bottom: 50px;
+  border-radius: 3px;
+  border: 1px solid #e7e7e7;
+  right: 10px;
+  width: 164px;
+}
+
+#menu-two span {
+  color: #21333f;
+  margin: 0;
+  padding: 0;
+  text-decoration: none;
+  background-color: #fefae0;
+  border-bottom: 1px solid #e7e7e7;
+  padding-top: 12px;
+  text-transform: capitalize;
+  font-weight: bold;
+  font-size: 16px;
+  text-align: left;
+  padding-left: 6px;
+}
+
+#charter > img,
+#disd-school > img {
+  width: 40px;
+}
+
+#all > div > img {
+  visibility: hidden;
+}
+
+#menu a span {
+  margin-top: -32px;
+  display: block;
+  margin-left: 50px;
+}
+
+#menu a:last-child {
+  border: none;
+}
+
+#menu a.active {
+  background-color: #d2ffff;
+  color: #ffffff;
+}
+
+.map-overlay {
+  position: absolute;
+  bottom: 0;
+  right: -9px;
+  background: rgba(255, 255, 255);
+  margin-right: 20px;
+  font-family: "Roboto", sans-serif;
+  overflow: auto;
+  border-radius: 3px;
+}
+div#layers-custom-control {
+  display: block;
+  border: 2px solid #ddd8d4;
+  margin-left: 9px;
+  background-color: #ffffff;
+  padding-left: 0px;
+  width: 28px;
+  height: 28px;
+  padding-top: 1px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.material-icons {
+  font-family: "Material Icons";
+  font-weight: normal;
+  margin-top: 2px;
+  margin-left: 2px;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* @media screen and (max-width: 1039px) and (min-width: 814px) {
+  #menu {
+    overflow-y: auto;
   }
-);
-
-$("input[type='checkbox'][name='filter-by-second-type-input']").click(
-  function () {
-    var currentCountry = $(this).val();
-    console.log(currentCountry);
-    if ($(this).is(":checked")) {
-      $("[data-second-type='" + currentCountry + "']").each(function (index) {
-        $(this).attr("data-second-type-visible", "true");
-        $(this).css("display", "block");
-      });
-    } else {
-      $("[data-second-type='" + currentCountry + "']").each(function (index) {
-        $(this).attr("data-second-type-visible", "false");
-        $(this).css("display", "none");
-      });
-    }
+  #menu a {
+    font-size: 14px;
   }
-);
+
+  #menu img {
+    width: 22px;
+  }
+} */
+
+/* start filter styling */
+span.anchor {
+  width: 131px;
+}
+.dropdown-check-list {
+  width: 190px;
+}
+
+fieldset#filter-by-first-type,
+fieldset#filter-by-second-type {
+  font-size: 14px;
+  font-weight: 600;
+  width: 169px;
+  background-color: #ffffff;
+  position: absolute;
+  border: 1px solid #ffffff;
+  border-radius: 5px;
+  top: 3px;
+  /* margin: 10px 0 0 12px; */
+  margin-left: 0;
+}
+
+fieldset#filter-by-first-type {
+  right: 11px;
+  z-index: 8;
+  top: 10px;
+}
+fieldset#filter-by-second-type {
+  right: 11px;
+  z-index: 7;
+  top: 91px;
+}
+
+.dropdown-check-list {
+  display: inline-block;
+}
+
+.dropdown-check-list .anchor {
+  position: relative;
+  cursor: pointer;
+  display: inline-block;
+  padding: 5px 50px 5px 10px;
+  border: 1px solid #ccc;
+}
+
+.dropdown-check-list .anchor:after {
+  position: absolute;
+  content: "";
+  border-left: 2px solid black;
+  border-top: 2px solid black;
+  padding: 5px;
+  right: 10px;
+  top: 20%;
+  -moz-transform: rotate(-135deg);
+  -ms-transform: rotate(-135deg);
+  -o-transform: rotate(-135deg);
+  -webkit-transform: rotate(-135deg);
+  transform: rotate(-135deg);
+}
+
+.dropdown-check-list .anchor:active:after {
+  right: 8px;
+  top: 21%;
+}
+
+.dropdown-check-list ul.items {
+  padding: 2px;
+  display: none;
+  margin: 0;
+  border: 1px solid #ccc;
+  border-top: none;
+  width: 187px;
+}
+
+.dropdown-check-list ul.items li {
+  list-style: none;
+}
+
+.dropdown-check-list.visible .anchor {
+  color: #000000;
+}
+
+.dropdown-check-list.visible .items {
+  display: block;
+}
+
+
+.toggle-filter-box {
+  display: none;
+}
+
+.visible-filter-box {
+  display: block;
+  position: relative;
+  border-radius: 7px;
+  background-color: white;
+  z-index: 2001;
+  position: absolute;
+  width: 322px;
+  /* min-width: 450px; */
+  height: 599px;
+  right: 10px;
+  top: 133px;
+  /* transition: left 0.7s ease; */
+}
+
+div.toggle-filter-box {
+  background-color: #ffffff;
+  color: #000000;
+}
+
+img.legend-image {
+  width: 15px;
+  float: right;
+  margin-right: 10px;
+  margin-top: 3px;
+}
+/* end filter styling */
+
+@media screen and (max-width: 813px) and (min-width: 666px) {
+  #menu {
+    max-width: 25%;
+    /* height: 147px; */
+  }
+
+  #menu a {
+    font-size: 1.7vw;
+    padding-top: 7px;
+  }
+
+  #menu a span {
+    margin-top: -25px;
+  }
+
+  #menu img {
+    position: relative;
+    width: 17px;
+    height: 21px;
+    margin-left: 10px;
+    margin-top: -26px;
+  }
+}
+
+@media screen and (max-width: 665px) and (min-width: 456px) {
+  #menu {
+    max-width: 30%;
+    /* height: 300px; */
+    overflow-y: auto;
+  }
+
+  #menu a {
+    font-size: 2vw;
+  }
+
+  #menu img {
+    width: 30px;
+    margin-top: 5px;
+  }
+}
+@media screen and (max-width: 455px) and (min-width: 400px) {
+  .mapboxgl-ctrl-geocoder mapboxgl-ctrl {
+    width: 30%;
+  }
+
+  .mapboxgl-ctrl-geocoder {
+    width: 25%;
+    min-width: 175px;
+  }
+
+  #legend {
+    margin-bottom: 110px;
+  }
+}
+
+@media screen and (max-width: 399px) {
+  .mapboxgl-ctrl-geocoder mapboxgl-ctrl {
+    width: 30%;
+  }
+
+  .mapboxgl-ctrl-geocoder {
+    width: 25%;
+    min-width: 175px;
+  }
+}
